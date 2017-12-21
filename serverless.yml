@@ -1,0 +1,53 @@
+service: serverless-sqs-lambda-sns
+
+provider:
+  name: aws
+  stage: ${opt:stage, 'dev'}
+  runtime: java8
+  region: eu-west-1
+  memorySize: 1024
+  timeout: 120
+  environment:
+      sqs_url:
+        Ref: MessagesQueue
+  iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - sqs:*
+        Resource:
+          Fn::GetAtt: [ MessagesQueue, Arn ]
+      - Effect: Allow
+        Action:
+          - sns:Publish
+          - sns:CreateTopic
+        Resource: { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:resources.Resources.SnsTopic.Properties.TopicName}" ] ]  }
+
+package:
+        artifact: target/serverless-sqs-lambda-sns-1.0.0.jar
+
+functions:
+  dequeue:
+    handler: com.example.Handler
+    events:
+      - schedule: rate(2 minutes)
+
+resources:
+  Resources:
+
+    MessagesQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${self:provider.stage}-queue
+
+    SnsTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        DisplayName: APU SNS Topic
+        TopicName: ${self:service}-${self:provider.stage}-topic
+
+    SnSSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+          Endpoint: email@provider.com 
+          Protocol: email
+          TopicArn: { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:resources.Resources.SnsTopic.Properties.TopicName}" ] ]  }
