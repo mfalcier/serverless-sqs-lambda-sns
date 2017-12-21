@@ -7,23 +7,27 @@ provider:
   region: eu-west-1
   memorySize: 1024
   timeout: 120
+
   environment:
-      sqs_url:
-        Ref: MessagesQueue
+      sqsUrl:
+        Ref: SQSQueue
+      snsArn:
+        Ref: SNSTopic
+
   iamRoleStatements:
       - Effect: Allow
         Action:
           - sqs:*
         Resource:
-          Fn::GetAtt: [ MessagesQueue, Arn ]
+          Fn::GetAtt: [ SQSQueue, Arn ]
       - Effect: Allow
         Action:
           - sns:Publish
           - sns:CreateTopic
-        Resource: { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:resources.Resources.SnsTopic.Properties.TopicName}" ] ]  }
+        Resource: { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:resources.Resources.SNSTopic.Properties.TopicName}" ] ]  }
 
 package:
-        artifact: target/serverless-sqs-lambda-sns-1.0.0.jar
+  artifact: target/serverless-sqs-lambda-sns-1.0.0.jar
 
 functions:
   dequeue:
@@ -34,20 +38,20 @@ functions:
 resources:
   Resources:
 
-    MessagesQueue:
+    SQSQueue:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:service}-${self:provider.stage}-queue
 
-    SnsTopic:
+    SNSTopic:
       Type: AWS::SNS::Topic
       Properties:
-        DisplayName: APU SNS Topic
+        DisplayName: SNS Topic
         TopicName: ${self:service}-${self:provider.stage}-topic
 
-    SnSSubscription:
+    SNSSubscription:
       Type: AWS::SNS::Subscription
       Properties:
-          Endpoint: email@provider.com 
+          Endpoint: email@provider.com
           Protocol: email
-          TopicArn: { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:resources.Resources.SnsTopic.Properties.TopicName}" ] ]  }
+          TopicArn: { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:resources.Resources.SNSTopic.Properties.TopicName}" ] ]  }
